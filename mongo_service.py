@@ -36,7 +36,7 @@ class MongoService:
         self.client = MongoClient(mongo_db_url)
         self.db = self.client[database_name]
         self.collection = self.db.papers
-        
+        self.user_collection = self.db.user_paper_abstracts
         # 연결 테스트
         try:
             self.client.admin.command('ping')
@@ -106,7 +106,7 @@ class MongoService:
             arxiv_id: ArXiv 논문 ID
             
         Returns:
-            bool: 논문 존재 여부
+            id: 논문의 ObjectId
         """
         try:
             # ArXiv ID로 URL 생성
@@ -121,12 +121,30 @@ class MongoService:
             else:
                 logger.info(f"논문 존재하지 않음: {arxiv_id} (URL: {url})")
             
-            return exists
+            return paper["_id"] if paper else None
             
         except Exception as e:
             logger.error(f"논문 존재 확인 실패: {e}")
             return False
     
+    def save_user_paper_abstract(self, user_id: str, paper_id: str) -> Optional[str]:
+        """    
+        사용자 논문 초록 추가 정보를 저장합니다.
+        
+        Args:
+            user_id: 사용자 ID
+            paper_id: 논문 ID
+            abstract: 논문 초록
+        """    
+        try:
+            self.user_collection.insert_one({"user_id": user_id, "paper_id": paper_id})
+            logger.info(f"사용자 논문 초록 추가 정보 저장됨: {user_id} (논문 ID: {paper_id})")
+            return True
+        except Exception as e:
+            logger.error(f"사용자 논문 초록 추가 정보 저장 실패: {e}")
+            return False
+
+
     def close(self):
         """MongoDB 연결 종료"""
         if self.client:
