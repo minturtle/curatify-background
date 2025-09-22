@@ -1,0 +1,16 @@
+services:
+  curatify-backgrounds:
+    image: 202.31.200.86:15000/curatify/background
+    container_name: curatify-backgrounds
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 로깅 설정
+      - PYTHONUNBUFFERED=1
+    networks:
+      - curatify-network
+
+networks:
+  curatify-network:
+    driver: bridge

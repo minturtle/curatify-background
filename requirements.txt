@@ -1,0 +1,5 @@
+git+https://github.com/minturtle/redis-subscriber.git@v1.0.1
+python-dotenv
+arxiv
+langchain-openai
+pymongo
