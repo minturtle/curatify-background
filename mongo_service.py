@@ -57,11 +57,6 @@ class MongoService:
             str: 저장된 문서의 ID 또는 None
         """
         try:
-            # URL에서 arxiv_id 추출 (예: "https://arxiv.org/abs/0704.0002" -> "0704.0002")
-            arxiv_id = None
-            if "url" in paper_data and "arxiv.org/abs/" in paper_data["url"]:
-                arxiv_id = paper_data["url"].split("arxiv.org/abs/")[-1]
-            
             # 저장할 문서 구성
             document = {
                 "title": paper_data.get("title", ""),
@@ -76,23 +71,11 @@ class MongoService:
                 "updatedAt": datetime.utcnow()
             }
             
-            
-            # 중복 체크 (url 기준)
-            existing = self.collection.find_one({"url": paper_data.get("url")})
-            if existing:
-                # 기존 문서 업데이트
-                document["updatedAt"] = datetime.utcnow()
-                result = self.collection.update_one(
-                    {"url": paper_data.get("url")},
-                    {"$set": document}
-                )
-                logger.info(f"논문 업데이트됨: {paper_data.get('title', 'Unknown')}")
-                return str(existing["_id"])
-            else:
-                # 새 문서 삽입
-                result = self.collection.insert_one(document)
-                logger.info(f"논문 저장됨: {paper_data.get('title', 'Unknown')}")
-                return str(result.inserted_id)
+
+            # 새 문서 삽입
+            result = self.collection.insert_one(document)
+            logger.info(f"논문 저장됨: {paper_data.get('title', 'Unknown')}")
+            return result.inserted_id
                 
         except Exception as e:
             logger.error(f"논문 저장 실패: {e}")
