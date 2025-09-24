@@ -1,4 +1,13 @@
-from typing import TypedDict, List, Optional, Any
+from typing import TypedDict, List, Optional, Any, Literal
+
+class ContentChunk(TypedDict):
+    type: Literal["text", "img"]
+    content: str
+
+class ContentAnalysisResult(TypedDict):
+    title: str
+    content: str
+
 
 class PaperMessage(TypedDict):
     user_id: str
@@ -21,3 +30,4 @@ class PaperData(TypedDict):
     categories: List[str]
     abstract: str
     lastPublishDate: Optional[str]
+

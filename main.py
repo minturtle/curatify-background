@@ -55,7 +55,7 @@ def confirm_paper_abstract(message: PaperMessage) -> Optional[str]:
         return None
     
     # 논문 초록 요약
-    summary = arxiv_runner.summary_abstract(paper_metadata["abstract"], paper_metadata["title"])
+    summary = arxiv_runner._summary_abstract(paper_metadata["abstract"], paper_metadata["title"])
     if not summary:
         logging.error(f"논문 요약 실패: {message['paper_id']}")
         return None
@@ -102,7 +102,7 @@ def handle_content_queue(msg: str):
         if not paper_data:
             logging.info(f"논문 데이터 조회 실패: {message['paper_id']}")
             return
-        paper_content = arxiv_runner.summary_paper_content(convert_arxiv_url_to_pdf(paper_data["url"]))
+        paper_content = arxiv_runner.analyze_paper_content(convert_arxiv_url_to_pdf(paper_data["url"]))
         
         logging.info(paper_content)
         if not paper_content:

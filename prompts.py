@@ -53,3 +53,59 @@ def create_summary_user_prompt(abstract: str, title: str = "") -> str:
 **Abstract**: {abstract}
 
 Based on the instructions above, provide a structured Korean summary with 3-5 bullet points following the problem → method → results framework. Each bullet point must be exactly one sentence in Korean, preserving English technical terminology where appropriate."""
+
+
+
+def create_analyze_paper_content_prompt(content: str) -> str:
+    return f"""
+As an expert academic translator and research analyst specializing in scholarly content processing, your task is to translate and systematically organize academic paper content from any language into Korean.
+
+### INSTRUCTIONS
+
+You are required to process academic paper content with precision and scholarly rigor. Follow these detailed guidelines:
+
+**Translation Requirements:**
+- Translate all content accurately into natural, academic Korean
+- Always use formal Korean language style with polite endings such as "합니다", "됩니다", "있습니다" etc.
+- Maintain consistent formal tone throughout all responses and translations
+- Preserve all technical terminology, scientific terms, and specialized vocabulary in their original language (English, Latin, etc.)
+- Maintain the academic tone and scholarly register appropriate for Korean academic writing
+- Ensure conceptual accuracy over literal translation
+
+**Content Organization:**
+- Structure the translated content using clear markdown bullet points (-) ONLY
+- Do NOT use any headers, subheaders, or title formatting (##, ###, etc.)
+- Start directly with bullet points without any heading introductions
+- Create hierarchical organization with main points and sub-points using indented bullet points
+- Maintain logical flow and coherence of the original academic argument
+- Preserve important data, statistics, and numerical information exactly as presented
+- Remove forward-looking statements that preview future sections (e.g., "다음 섹션에서는...", "이어지는 부분에서...")
+- For figure descriptions and captions: provide direct translation only without reorganization
+
+**Output Format:**
+- Provide your response directly in markdown format using bullet points only
+- Use bullet points for organized content presentation
+- Do NOT include any headers, subheaders, or titles
+- Maintain clear structure and readability through bullet point hierarchy only
+
+**Quality Standards:**
+- Ensure comprehensive coverage of all substantive academic content
+- Maintain scholarly precision in terminology and concepts
+- Create scannable, well-organized bullet point summaries
+- Preserve critical citations, methodologies, and research findings
+
+### EXCEPTION HANDLING
+
+Handle non-academic content as follows:
+- **Author information, bibliographic data, headers/footers:** Remove completely from output
+- **Advertisement or promotional content:** Remove completely from output
+- **Irrelevant metadata or formatting artifacts:** Remove completely from output
+- **Forward-looking section previews:** Remove completely from output
+- Only translate and include substantive academic content in your response
+
+### INPUT
+content: {content}
+
+### EXPECTED OUTPUT
+Translated and organized academic content in Korean markdown format using formal language style and bullet points only, with all non-academic content and section previews removed, no headers or titles included, and figure descriptions translated directly.
+"""

@@ -6,14 +6,14 @@ Author: Minseok kim
 
 import arxiv
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import logging
 import os
 import tempfile
 from pathlib import Path
-from prompts import create_summary_user_prompt, create_system_summary_prompt
+from prompts import create_summary_user_prompt, create_system_summary_prompt, create_analyze_paper_content_prompt
 from langchain_openai import ChatOpenAI
-from type import ArXivMetadata
+from type import ArXivMetadata, ContentChunk, ContentAnalysisResult
 import requests
 from io import BytesIO
 
@@ -24,6 +24,7 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 import markdown_to_json
 from uuid import uuid4
+from utils.paper import split_text_and_images
 
 logger = logging.getLogger(__name__)
 
@@ -92,40 +93,7 @@ class ArXivRunner:
             logger.error(f"메타데이터 조회 중 오류 발생: {e}")
             return None
 
-    def summary_abstract(self, abstract: str, title: str) -> Optional[str]:
-        """
-        논문 초록을 요약합니다.
-        
-        Args:
-            abstract: 논문 초록
-            title: 논문 제목
-            
-        Returns:
-            str: 요약된 초록 또는 None
-        """
-        try:
-            # 프롬프트 생성
-            user_prompt = create_summary_user_prompt(abstract, title)
-            system_prompt = create_system_summary_prompt()
-            
-            # 메시지 구성
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-            
-            # OpenAI API 호출
-            response = self.llm.invoke(messages)
-            
-            logger.info("초록 요약 완료")
-            return response.content
-            
-        except Exception as e:
-            logger.error(f"초록 요약 중 오류 발생: {e}")
-            return None
-
-    
-    def summary_paper_content(self, pdf_url: str):
+    def analyze_paper_content(self, pdf_url: str):
         """
         논문 본문을 요약/정리합니다.
         
@@ -148,7 +116,17 @@ class ArXivRunner:
             )
 
             json_data = self._parse_pdf_to_json(doc_stream)
-            return json_data
+
+
+            result_list: List[ContentAnalysisResult] = [
+                {
+                    "order": idx + 1,
+                    "contentTitle": title,
+                    "content": self._create_analyzed_content(split_text_and_images(content))
+                }
+                for idx, (title, content) in enumerate(json_data.items())
+            ]
+            return result_list
 
         except Exception as e:
             logger.error(f"논문 본문 요약/정리 중 오류 발생: {e}")
@@ -247,3 +225,58 @@ class ArXivRunner:
         with open(md_file_name, "r", encoding="utf-8") as f:
             md_content = f.read()
             return markdown_to_json.dictify(md_content)
+
+    def _summary_abstract(self, abstract: str, title: str) -> Optional[str]:
+        """
+        논문 초록을 요약합니다.
+        
+        Args:
+            abstract: 논문 초록
+            title: 논문 제목
+            
+        Returns:
+            str: 요약된 초록 또는 None
+        """
+        try:
+            # 프롬프트 생성
+            user_prompt = create_summary_user_prompt(abstract, title)
+            system_prompt = create_system_summary_prompt()
+            
+            # 메시지 구성
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+            
+            # OpenAI API 호출
+            response = self.llm.invoke(messages)
+            
+            logger.info("초록 요약 완료")
+            return response.content
+            
+        except Exception as e:
+            logger.error(f"초록 요약 중 오류 발생: {e}")
+            return None
+
+    def _create_analyzed_content(self, content: List[ContentChunk]) -> Optional[str]:
+        """
+        논문 본문을 요약합니다.
+        
+        Args:
+            content: 논문 본문 (ContentChunk 리스트)
+        Returns:
+            str: 요약된 본문 또는 None
+        """
+        try:
+            tmp = []
+            for chunk in content:
+                if chunk["type"] == "img":
+                    tmp.append(f"\n{chunk['content']}\n")
+                else:
+                    user_prompt = create_analyze_paper_content_prompt(chunk["content"]) 
+                    response = self.llm.invoke(user_prompt)
+                    tmp.append(response.content)
+            return "\n".join(tmp)
+        except Exception as e:
+            logger.error(f"논문 본문 요약 중 오류 발생: {e}")
+            return None
