@@ -88,11 +88,18 @@ You are required to process academic paper content with precision and scholarly 
 - Maintain original language and formatting of citations
 - Preserve author names, publication years, titles, and journal information exactly as provided
 
+**Special Handling for Tables:**
+- If content contains markdown tables, maintain the markdown table format
+- Translate table content to Korean while preserving the table structure
+- Do NOT convert tables into bullet points
+- Keep table headers, rows, and columns in their original markdown format
+
 **Output Format:**
 - Provide your response directly in markdown format using bullet points only
 - Use bullet points for organized content presentation
 - Do NOT include any headers, subheaders, or titles
 - Maintain clear structure and readability through bullet point hierarchy only
+- Exception: Preserve markdown table format for tabular data
 
 **Quality Standards:**
 - Ensure comprehensive coverage of all substantive academic content
@@ -108,11 +115,12 @@ Handle non-academic content as follows:
 - **Irrelevant metadata or formatting artifacts:** Remove completely from output
 - **Forward-looking section previews:** Remove completely from output
 - **References/Bibliography sections:** Do not translate; reorganize in markdown format only
+- **Markdown tables:** Maintain table format while translating content
 - Only translate and include substantive academic content in your response
 
 ### INPUT
 content: {content}
 
 ### EXPECTED OUTPUT
-Translated and organized academic content in Korean markdown format using formal language style and bullet points only, with all non-academic content and section previews removed, no headers or titles included, figure descriptions translated directly, and reference sections reorganized without translation.
+Translated and organized academic content in Korean markdown format using formal language style and bullet points only, with all non-academic content and section previews removed, no headers or titles included, figure descriptions translated directly, reference sections reorganized without translation, and markdown tables preserved in their original format.
 """

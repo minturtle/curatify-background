@@ -25,7 +25,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 import markdown_to_json
 from uuid import uuid4
 from utils.str_utils import split_text_and_images
-from file_service import FileService
+from file_service import upload_file_to_oci
 from utils.str_utils import extract_image_url_from_markdown, replace_image_url_in_markdown
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,6 @@ class ArXivRunner:
             api_key=os.getenv("OPENAI_API_KEY", "not-used"),
             base_url=os.getenv("OPENAI_BASE_URL")
         )
-        self.file_service = FileService()
     def get_metadata(self, arxiv_id: str) -> Optional[ArXivMetadata]:
         """
         ArXiv ID로부터 논문 메타데이터를 가져옵니다.
@@ -299,7 +298,7 @@ class ArXivRunner:
 
             if not local_image_url:
                 raise ValueError("로컬 이미지 URL을 추출할 수 없습니다.")
-            public_url = self.file_service.upload_file_to_oci(local_image_url)
+            public_url = upload_file_to_oci(local_image_url)
             return replace_image_url_in_markdown(image_url, public_url)
 
         except Exception as e:
