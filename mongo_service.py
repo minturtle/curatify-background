@@ -5,13 +5,13 @@ Author: Minseok kim
 """
 
 import os
-from typing import Dict, List, Optional, Any
+from typing import Optional
 from pymongo import MongoClient
-from pymongo.collection import Collection
-from pymongo.database import Database
 import logging
 from datetime import datetime
 from type import PaperData
+from bson import ObjectId
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,19 @@ class MongoService:
             logger.error(f"MongoDB 연결 실패: {e}")
             raise
     
+    def find_by_id(self, id: str) -> Optional[PaperData]:
+        """
+        논문 데이터를 조회합니다.
+        
+        Args:
+            id: 논문 ID
+        """
+        try:
+            paper = self.collection.find_one({"_id": ObjectId(id)})
+            return paper
+        except Exception as e:
+            logger.error(f"논문 조회 실패: {e}")
+            return None
     
     def save_paper(self, paper_data: PaperData) -> Optional[str]:
         """
@@ -81,6 +94,8 @@ class MongoService:
             logger.error(f"논문 저장 실패: {e}")
             return None
     
+
+
     def is_paper_exists(self, arxiv_id: str) -> bool:
         """
         ArXiv ID로 논문이 존재하는지 확인합니다. (URL 기반 체크)

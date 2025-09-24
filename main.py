@@ -1,13 +1,15 @@
 from redis_subscriber import RedisSubscriber
 import os
 from dotenv import load_dotenv
-from type import PaperAbstractMessage, PaperData
+from type import PaperMessage, PaperData
 import logging
 import json
 from arxiv_runner import ArXivRunner
 from mongo_service import MongoService
 from typing import Optional
 from bson import ObjectId
+from utils.paper import convert_arxiv_url_to_pdf
+
 logging.basicConfig(level=logging.INFO)  # DEBUG 로그도 보이도록 설정
 
 
@@ -29,7 +31,8 @@ arxiv_runner = ArXivRunner()
 mongo_service = MongoService()
 
 
-def confirm_paper_abstract(message: PaperAbstractMessage) -> Optional[str]:
+
+def confirm_paper_abstract(message: PaperMessage) -> Optional[str]:
     """
     논문 초록 요약 정보를 확인하고 저장하는 함수입니다.
     
@@ -77,7 +80,7 @@ def confirm_paper_abstract(message: PaperAbstractMessage) -> Optional[str]:
 def handle_abstract_queue(msg: str):
     try:
         data = json.loads(msg)
-        message: PaperAbstractMessage = {**data}
+        message: PaperMessage = {**data}
         
         paper_object_id = confirm_paper_abstract(message)
         
@@ -85,6 +88,26 @@ def handle_abstract_queue(msg: str):
             mongo_service.save_user_paper_abstract(ObjectId(message["user_id"]), paper_object_id)
 
         logging.info(f"논문 초록 요약 정보 저장 완료: {message['paper_id']}")
+
+    except Exception as e:
+        logging.error(f"논문 처리 중 오류 발생: {e}")
+
+@subscriber.subscribe("paper:analysis")
+def handle_content_queue(msg: str):
+    try:
+        data = json.loads(msg)
+        message: PaperMessage = {**data}
+        paper_data = mongo_service.find_by_id(message["paper_id"])
+        
+        if not paper_data:
+            logging.info(f"논문 데이터 조회 실패: {message['paper_id']}")
+            return
+        paper_content = arxiv_runner.summary_paper_content(convert_arxiv_url_to_pdf(paper_data["url"]))
+        
+        logging.info(paper_content)
+        if not paper_content:
+            logging.error(f"논문 콘텐츠 요약 실패: {message['paper_id']}")
+            return
 
     except Exception as e:
         logging.error(f"논문 처리 중 오류 발생: {e}")

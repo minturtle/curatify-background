@@ -246,4 +246,4 @@ class ArXivRunner:
         """
         with open(md_file_name, "r", encoding="utf-8") as f:
             md_content = f.read()
-            return markdown_to_json.convert(md_content)
+            return markdown_to_json.dictify(md_content)

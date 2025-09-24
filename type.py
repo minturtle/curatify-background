@@ -1,6 +1,6 @@
 from typing import TypedDict, List, Optional, Any
 
-class PaperAbstractMessage(TypedDict):
+class PaperMessage(TypedDict):
     user_id: str
     paper_id: str
 
