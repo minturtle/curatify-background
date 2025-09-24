@@ -82,6 +82,12 @@ You are required to process academic paper content with precision and scholarly 
 - Remove forward-looking statements that preview future sections (e.g., "다음 섹션에서는...", "이어지는 부분에서...")
 - For figure descriptions and captions: provide direct translation only without reorganization
 
+**Special Handling for References:**
+- If the entire content appears to be a References/Bibliography section, do NOT translate
+- Simply reorganize the references in clean markdown bullet point format
+- Maintain original language and formatting of citations
+- Preserve author names, publication years, titles, and journal information exactly as provided
+
 **Output Format:**
 - Provide your response directly in markdown format using bullet points only
 - Use bullet points for organized content presentation
@@ -101,11 +107,12 @@ Handle non-academic content as follows:
 - **Advertisement or promotional content:** Remove completely from output
 - **Irrelevant metadata or formatting artifacts:** Remove completely from output
 - **Forward-looking section previews:** Remove completely from output
+- **References/Bibliography sections:** Do not translate; reorganize in markdown format only
 - Only translate and include substantive academic content in your response
 
 ### INPUT
 content: {content}
 
 ### EXPECTED OUTPUT
-Translated and organized academic content in Korean markdown format using formal language style and bullet points only, with all non-academic content and section previews removed, no headers or titles included, and figure descriptions translated directly.
+Translated and organized academic content in Korean markdown format using formal language style and bullet points only, with all non-academic content and section previews removed, no headers or titles included, figure descriptions translated directly, and reference sections reorganized without translation.
 """
