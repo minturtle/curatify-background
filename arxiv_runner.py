@@ -5,12 +5,25 @@ Author: Minseok kim
 """
 
 import arxiv
-from typing import Dict, Optional
+
+from typing import Optional, Dict, Any
 import logging
 import os
+import tempfile
+from pathlib import Path
 from prompts import create_summary_user_prompt, create_system_summary_prompt
 from langchain_openai import ChatOpenAI
 from type import ArXivMetadata
+import requests
+from io import BytesIO
+
+from docling_core.types.doc import ImageRefMode, PictureItem, TableItem
+from docling.datamodel.base_models import InputFormat, DocumentStream
+
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
+import markdown_to_json
+from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +123,127 @@ class ArXivRunner:
         except Exception as e:
             logger.error(f"초록 요약 중 오류 발생: {e}")
             return None
+
+    
+    def summary_paper_content(self, pdf_url: str):
+        """
+        논문 본문을 요약/정리합니다.
+        
+        Args:
+            pdf_url: 논문 PDF 파일 URL
+            
+        Returns:
+            아직 미정
+        """
+        try:
+
+            logging.info(f"논문 본문 요약/정리 시작: {pdf_url}")
+
+            pdf_bytes = self._read_pdf_to_binary(pdf_url)
+
+            temp_file_name = str(uuid4()) + ".pdf"
+            doc_stream = DocumentStream(
+                name=temp_file_name,
+                stream=pdf_bytes,
+            )
+
+            json_data = self._parse_pdf_to_json(doc_stream)
+            return json_data
+
+        except Exception as e:
+            logger.error(f"논문 본문 요약/정리 중 오류 발생: {e}")
+            return None
+        finally:
+            logging.info(f"논문 본문 요약/정리 완료: {pdf_url}")
+
+
+
+    def _read_pdf_to_binary(self, pdf_url: str) -> BytesIO:
+        """
+        웹으로 부터 PDF 파일을 바이트 스트림으로 읽어옵니다.
+        
+        Args:
+            pdf_url: PDF 파일 URL
+            
+        Returns:
+            BytesIO: PDF 파일 바이트 스트림
+        """
+        response = requests.get(pdf_url)
+        response.raise_for_status()
+        
+        if response.headers.get('content-type') != 'application/pdf':
+            logger.error(f"PDF가 아닌 콘텐츠 타입: {response.headers.get('content-type')}")
+            raise ValueError("PDF 파일이 아닙니다")
+
+        pdf_bytes = BytesIO(response.content)
+        return pdf_bytes
+
+    def _parse_pdf_to_json(self, doc_stream: DocumentStream) -> Dict[str, Any]:
+        """
+        PDF를 JSON으로 변환합니다.
+        
+        Args:
+            doc_stream: DocumentStream
+            
+        Returns:
+            Dict[str, Any]: JSON 데이터
+        """
+        # 임시 디렉토리 생성
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = Path(temp_dir)
+            temp_md_file_name = str(uuid4()) + ".md"
+
+            # 이미지 생성 옵션 (페이지/그림/표 이미지 생성)
+            pipe_opts = PdfPipelineOptions()
+            pipe_opts.images_scale = 2.0                  # 해상도(1 ~= 72 DPI)
+            pipe_opts.generate_page_images = True
+            pipe_opts.generate_picture_images = True
+
+            conv = DocumentConverter(
+                format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipe_opts)}
+            )
+            res = conv.convert(doc_stream)
+
+            # doc_stream의 name을 사용하여 stem 생성
+            stem = Path(doc_stream.name).stem
+
+            # 1) 페이지 이미지 저장
+            for page_no, page in res.document.pages.items():
+                with (out_dir / f"{stem}-{page.page_no}.png").open("wb") as fp:
+                    page.image.pil_image.save(fp, format="PNG")
+
+            # 2) 표/그림 이미지 저장
+            t, p = 0, 0
+            for elem, _ in res.document.iterate_items():
+                if isinstance(elem, TableItem):
+                    t += 1
+                    with (out_dir / f"{stem}-table-{t}.png").open("wb") as fp:
+                        elem.get_image(res.document).save(fp, "PNG")
+                if isinstance(elem, PictureItem):
+                    p += 1
+                    with (out_dir / f"{stem}-picture-{p}.png").open("wb") as fp:
+                        elem.get_image(res.document).save(fp, "PNG")
+            
+
+            # 3) md 파일 export
+            res.document.save_as_markdown(out_dir / temp_md_file_name, image_mode=ImageRefMode.REFERENCED)
+
+            # 4)JSON 변환
+            json_data = self._md_file_to_json(out_dir / temp_md_file_name)
+
+            return json_data
+
+
+    def _md_file_to_json(self, md_file_name: str) -> Dict[str, Any]:
+        """
+        MD 파일을 JSON으로 변환합니다.
+        
+        Args:
+            md_file_name: MD 파일 이름
+            
+        Returns:
+            Dict[str, Any]: JSON 데이터
+        """
+        with open(md_file_name, "r", encoding="utf-8") as f:
+            md_content = f.read()
+            return markdown_to_json.convert(md_content)

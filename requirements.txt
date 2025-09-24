@@ -3,3 +3,6 @@ python-dotenv
 arxiv
 langchain-openai
 pymongo
+docling
+pillow
+markdown_to_json
