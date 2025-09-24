@@ -8,7 +8,7 @@ from arxiv_runner import ArXivRunner
 from mongo_service import MongoService
 from typing import Optional
 from bson import ObjectId
-from utils.paper import convert_arxiv_url_to_pdf
+from utils.str_utils import convert_arxiv_url_to_pdf
 
 logging.basicConfig(level=logging.INFO)  # DEBUG 로그도 보이도록 설정
 

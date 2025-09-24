@@ -24,7 +24,7 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 import markdown_to_json
 from uuid import uuid4
-from utils.paper import split_text_and_images
+from utils.str_utils import split_text_and_images
 
 logger = logging.getLogger(__name__)
 
