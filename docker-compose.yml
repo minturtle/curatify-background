@@ -8,6 +8,13 @@ services:
     environment:
       # 로깅 설정
       - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     networks:
       - curatify-network
 

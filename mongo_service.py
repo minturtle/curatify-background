@@ -37,6 +37,8 @@ class MongoService:
         self.db = self.client[database_name]
         self.collection = self.db.papers
         self.user_collection = self.db.user_paper_abstracts
+        self.user_library_collection = self.db.user_libraries
+
         # 연결 테스트
         try:
             self.client.admin.command('ping')
@@ -167,7 +169,7 @@ class MongoService:
         사용자 논문 라이브러리를 저장합니다.
         """
         try:
-            self.user_library_collection.insert_one({"user_id": user_id, "paper_id": paper_id, "created_at": datetime.utcnow()})
+            self.user_library_collection.insert_one({"userId": ObjectId(user_id), "paperId":ObjectId(paper_id), "createdAt": datetime.utcnow()})
             logger.info(f"사용자 논문 라이브러리 저장됨: {user_id} (논문 ID: {paper_id})")
             return True
         except Exception as e:

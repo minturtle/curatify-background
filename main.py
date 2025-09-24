@@ -102,6 +102,12 @@ def handle_content_queue(msg: str):
         if not paper_data:
             logging.info(f"논문 데이터 조회 실패: {message['paper_id']}")
             return
+
+        if paper_data["contentBlocks"]:
+            logging.info(f"논문 콘텐츠 이미 존재함: {message['paper_id']}")
+            mongo_service.save_user_library(message["user_id"], message["paper_id"])
+            return
+
         paper_content = arxiv_runner.analyze_paper_content(convert_arxiv_url_to_pdf(paper_data["url"]))
         
         if not paper_content:

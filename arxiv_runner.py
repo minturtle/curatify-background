@@ -110,24 +110,25 @@ class ArXivRunner:
 
             pdf_bytes = self._read_pdf_to_binary(pdf_url)
 
-            temp_file_name = str(uuid4()) + ".pdf"
-            doc_stream = DocumentStream(
-                name=temp_file_name,
-                stream=pdf_bytes,
-            )
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_file_name = str(uuid4()) + ".pdf"
+                doc_stream = DocumentStream(
+                    name=temp_file_name,
+                    stream=pdf_bytes,
+                )
 
-            json_data = self._parse_pdf_to_json(doc_stream)
+                json_data = self._parse_pdf_to_json(doc_stream, temp_dir)
 
 
-            result_list: List[ContentAnalysisResult] = [
-                {
-                    "order": idx + 1,
-                    "contentTitle": title,
-                    "content": self._create_analyzed_content(split_text_and_images(content))
-                }
-                for idx, (title, content) in enumerate(json_data.items())
-            ]
-            return result_list
+                result_list: List[ContentAnalysisResult] = [
+                    {
+                        "order": idx + 1,
+                        "contentTitle": title,
+                        "content": self._create_analyzed_content(split_text_and_images(content))
+                    }
+                    for idx, (title, content) in enumerate(json_data.items())
+                ]
+                return result_list
 
         except Exception as e:
             logger.error(f"논문 본문 요약/정리 중 오류 발생: {e}")
@@ -157,7 +158,7 @@ class ArXivRunner:
         pdf_bytes = BytesIO(response.content)
         return pdf_bytes
 
-    def _parse_pdf_to_json(self, doc_stream: DocumentStream) -> Dict[str, Any]:
+    def _parse_pdf_to_json(self, doc_stream: DocumentStream, temp_dir: str) -> Dict[str, Any]:
         """
         PDF를 JSON으로 변환합니다.
         
@@ -168,49 +169,48 @@ class ArXivRunner:
             Dict[str, Any]: JSON 데이터
         """
         # 임시 디렉토리 생성
-        with tempfile.TemporaryDirectory() as temp_dir:
-            out_dir = Path(temp_dir)
-            temp_md_file_name = str(uuid4()) + ".md"
+        out_dir = Path(temp_dir)
+        temp_md_file_name = str(uuid4()) + ".md"
 
-            # 이미지 생성 옵션 (페이지/그림/표 이미지 생성)
-            pipe_opts = PdfPipelineOptions()
-            pipe_opts.images_scale = 2.0                  # 해상도(1 ~= 72 DPI)
-            pipe_opts.generate_page_images = True
-            pipe_opts.generate_picture_images = True
+        # 이미지 생성 옵션 (페이지/그림/표 이미지 생성)
+        pipe_opts = PdfPipelineOptions()
+        pipe_opts.images_scale = 2.0                  # 해상도(1 ~= 72 DPI)
+        pipe_opts.generate_page_images = True
+        pipe_opts.generate_picture_images = True
 
-            conv = DocumentConverter(
-                format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipe_opts)}
-            )
-            res = conv.convert(doc_stream)
+        conv = DocumentConverter(
+            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipe_opts)}
+        )
+        res = conv.convert(doc_stream)
 
-            # doc_stream의 name을 사용하여 stem 생성
-            stem = Path(doc_stream.name).stem
+        # doc_stream의 name을 사용하여 stem 생성
+        stem = Path(doc_stream.name).stem
 
-            # 1) 페이지 이미지 저장
-            for page_no, page in res.document.pages.items():
-                with (out_dir / f"{stem}-{page.page_no}.png").open("wb") as fp:
-                    page.image.pil_image.save(fp, format="PNG")
+        # 1) 페이지 이미지 저장
+        for page_no, page in res.document.pages.items():
+            with (out_dir / f"{stem}-{page.page_no}.png").open("wb") as fp:
+                page.image.pil_image.save(fp, format="PNG")
 
-            # 2) 표/그림 이미지 저장
-            t, p = 0, 0
-            for elem, _ in res.document.iterate_items():
-                if isinstance(elem, TableItem):
-                    t += 1
-                    with (out_dir / f"{stem}-table-{t}.png").open("wb") as fp:
-                        elem.get_image(res.document).save(fp, "PNG")
-                if isinstance(elem, PictureItem):
-                    p += 1
-                    with (out_dir / f"{stem}-picture-{p}.png").open("wb") as fp:
-                        elem.get_image(res.document).save(fp, "PNG")
-            
+        # 2) 표/그림 이미지 저장
+        t, p = 0, 0
+        for elem, _ in res.document.iterate_items():
+            if isinstance(elem, TableItem):
+                t += 1
+                with (out_dir / f"{stem}-table-{t}.png").open("wb") as fp:
+                    elem.get_image(res.document).save(fp, "PNG")
+            if isinstance(elem, PictureItem):
+                p += 1
+                with (out_dir / f"{stem}-picture-{p}.png").open("wb") as fp:
+                    elem.get_image(res.document).save(fp, "PNG")
+        
 
-            # 3) md 파일 export
-            res.document.save_as_markdown(out_dir / temp_md_file_name, image_mode=ImageRefMode.REFERENCED)
+        # 3) md 파일 export
+        res.document.save_as_markdown(out_dir / temp_md_file_name, image_mode=ImageRefMode.REFERENCED)
 
-            # 4)JSON 변환
-            json_data = self._md_file_to_json(out_dir / temp_md_file_name)
+        # 4)JSON 변환
+        json_data = self._md_file_to_json(out_dir / temp_md_file_name)
 
-            return json_data
+        return json_data
 
 
     def _md_file_to_json(self, md_file_name: str) -> Dict[str, Any]:

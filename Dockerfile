@@ -1,5 +1,5 @@
 # Python 3.11 slim 이미지 사용
-FROM python:3.11-slim
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -24,8 +24,6 @@ COPY . .
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# 포트 노출 (필요시)
-EXPOSE 8000
 
 # 애플리케이션 실행
 CMD ["python", "main.py"]
