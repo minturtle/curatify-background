@@ -25,6 +25,8 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 import markdown_to_json
 from uuid import uuid4
 from utils.str_utils import split_text_and_images
+from file_service import FileService
+from utils.str_utils import extract_image_url_from_markdown, replace_image_url_in_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class ArXivRunner:
             api_key=os.getenv("OPENAI_API_KEY", "not-used"),
             base_url=os.getenv("OPENAI_BASE_URL")
         )
-    
+        self.file_service = FileService()
     def get_metadata(self, arxiv_id: str) -> Optional[ArXivMetadata]:
         """
         ArXiv ID로부터 논문 메타데이터를 가져옵니다.
@@ -93,7 +95,7 @@ class ArXivRunner:
             logger.error(f"메타데이터 조회 중 오류 발생: {e}")
             return None
 
-    def analyze_paper_content(self, pdf_url: str):
+    def analyze_paper_content(self, pdf_url: str) -> List[ContentAnalysisResult]:
         """
         논문 본문을 요약/정리합니다.
         
@@ -101,7 +103,7 @@ class ArXivRunner:
             pdf_url: 논문 PDF 파일 URL
             
         Returns:
-            아직 미정
+            List[ContentAnalysisResult]: 논문 본문 요약/정리 결과
         """
         try:
 
@@ -130,7 +132,7 @@ class ArXivRunner:
 
         except Exception as e:
             logger.error(f"논문 본문 요약/정리 중 오류 발생: {e}")
-            return None
+            return []
         finally:
             logging.info(f"논문 본문 요약/정리 완료: {pdf_url}")
 
@@ -271,7 +273,8 @@ class ArXivRunner:
             tmp = []
             for chunk in content:
                 if chunk["type"] == "img":
-                    tmp.append(f"\n{chunk['content']}\n")
+                    image_url = self._convert_local_image_to_fs(chunk["content"])
+                    tmp.append(f"\n{image_url}\n")
                 else:
                     user_prompt = create_analyze_paper_content_prompt(chunk["content"]) 
                     response = self.llm.invoke(user_prompt)
@@ -280,3 +283,25 @@ class ArXivRunner:
         except Exception as e:
             logger.error(f"논문 본문 요약 중 오류 발생: {e}")
             return None
+
+    def _convert_local_image_to_fs(self, image_url: str) -> str:
+        """
+        로컬 이미지를 s3 호환 파일 시스템에 저장합니다.
+        
+        Args:
+            image_url: 파일 시스템 이미지 URL(마크다운 형태)
+        
+        Returns:
+            str: 웹 Public URL(마크다운 형태)
+        """
+        try:
+            local_image_url = extract_image_url_from_markdown(image_url)
+
+            if not local_image_url:
+                raise ValueError("로컬 이미지 URL을 추출할 수 없습니다.")
+            public_url = self.file_service.upload_file_to_oci(local_image_url)
+            return replace_image_url_in_markdown(image_url, public_url)
+
+        except Exception as e:
+            logger.error(f"로컬 이미지를 웹 Public URL로 변환 중 오류 발생: {e}")
+            return image_url

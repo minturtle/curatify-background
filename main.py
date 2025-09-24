@@ -104,11 +104,13 @@ def handle_content_queue(msg: str):
             return
         paper_content = arxiv_runner.analyze_paper_content(convert_arxiv_url_to_pdf(paper_data["url"]))
         
-        logging.info(paper_content)
         if not paper_content:
             logging.error(f"논문 콘텐츠 요약 실패: {message['paper_id']}")
             return
 
+        mongo_service.update_paper_content(message["paper_id"], paper_content)
+        mongo_service.save_user_library(message["user_id"], message["paper_id"])
+        logging.info(f"논문 콘텐츠 요약 정보 저장 완료: {message['paper_id']}")
     except Exception as e:
         logging.error(f"논문 처리 중 오류 발생: {e}")
 

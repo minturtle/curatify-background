@@ -5,11 +5,11 @@ Author: Minseok kim
 """
 
 import os
-from typing import Optional
+from typing import Optional, List
 from pymongo import MongoClient
 import logging
 from datetime import datetime
-from type import PaperData
+from type import PaperData, ContentAnalysisResult
 from bson import ObjectId
 
 
@@ -140,6 +140,38 @@ class MongoService:
             return True
         except Exception as e:
             logger.error(f"사용자 논문 초록 추가 정보 저장 실패: {e}")
+            return False
+
+    def update_paper_content(self, paper_id: str, paper_content: List[ContentAnalysisResult]) -> Optional[str]:
+        """
+        논문 콘텐츠를 업데이트합니다.
+        
+        Args:
+            paper_id: 논문 ID
+            paper_content: 논문 콘텐츠
+            
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            self.collection.update_one({"_id": ObjectId(paper_id)}, {"$set": {"contentBlocks": paper_content}})
+            logger.info(f"논문 콘텐츠 업데이트됨: {paper_id}")
+            return True
+        except Exception as e:
+            logger.error(f"논문 콘텐츠 업데이트 실패: {e}")
+            return False
+
+
+    def save_user_library(self, user_id: str, paper_id: str) -> Optional[str]:
+        """
+        사용자 논문 라이브러리를 저장합니다.
+        """
+        try:
+            self.user_library_collection.insert_one({"user_id": user_id, "paper_id": paper_id, "created_at": datetime.utcnow()})
+            logger.info(f"사용자 논문 라이브러리 저장됨: {user_id} (논문 ID: {paper_id})")
+            return True
+        except Exception as e:
+            logger.error(f"사용자 논문 라이브러리 저장 실패: {e}")
             return False
 
 

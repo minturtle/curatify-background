@@ -1,11 +1,13 @@
-from typing import TypedDict, List, Optional, Any, Literal
+from typing import TypedDict, List, Optional, Literal
+from datetime import datetime
 
 class ContentChunk(TypedDict):
     type: Literal["text", "img"]
     content: str
 
 class ContentAnalysisResult(TypedDict):
-    title: str
+    order: int
+    contentTitle: str
     content: str
 
 
@@ -24,10 +26,14 @@ class ArXivMetadata(TypedDict):
 class PaperData(TypedDict):
     title: str
     summary: str
-    contentBlocks: List[Any]
+    contentBlocks: List[ContentAnalysisResult]
     url: str
     authors: List[str]
     categories: List[str]
     abstract: str
     lastPublishDate: Optional[str]
 
+class UserLibrary(TypedDict):
+    user_id: str
+    paper_id: str
+    created_at: datetime
